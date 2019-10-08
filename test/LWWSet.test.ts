@@ -36,7 +36,7 @@ describe('LWWSet', () => {
     expect(set.value).toEqual(new Set());
   });
 
-  it('readds removed item', async () => {
+  it('reads removed item', async () => {
     const set = new LWWSet();
 
     set.add('foo');
