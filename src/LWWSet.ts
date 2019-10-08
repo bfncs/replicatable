@@ -1,12 +1,14 @@
-interface LWWSetItem<T> {
+interface Timestamped<T> {
   value: T;
   lastModified: Date;
 }
 
+type Bias = 'add' | 'remove';
+
 function lastWriteWinsMerge<T>(
-  firstSet: Set<LWWSetItem<T>>,
-  secondSet: Set<LWWSetItem<T>>
-): Set<LWWSetItem<T>> {
+  firstSet: Set<Timestamped<T>>,
+  secondSet: Set<Timestamped<T>>
+): Set<Timestamped<T>> {
   return new Set(
     Array.from(secondSet).reduce(
       (acc, currentItem) => [
@@ -23,10 +25,12 @@ function lastWriteWinsMerge<T>(
 }
 
 class LWWSet<T> {
-  private addSet: Set<LWWSetItem<T>>;
-  private removeSet: Set<LWWSetItem<T>>;
+  private bias: Bias;
+  private addSet: Set<Timestamped<T>>;
+  private removeSet: Set<Timestamped<T>>;
 
-  public constructor() {
+  public constructor(bias: Bias = 'add') {
+    this.bias = bias;
     this.addSet = new Set();
     this.removeSet = new Set();
   }
@@ -35,7 +39,10 @@ class LWWSet<T> {
     const result: Set<T> = new Set();
     this.addSet.forEach(({ value, lastModified }) => {
       const removedItem = Array.from(this.removeSet).find(
-        item => item.value === value && item.lastModified > lastModified
+        item =>
+          item.value === value &&
+          (item.lastModified > lastModified ||
+            (this.bias === 'remove' && item.lastModified === lastModified))
       );
       if (!removedItem) {
         result.add(value);
@@ -44,17 +51,17 @@ class LWWSet<T> {
     return result;
   }
 
-  public add(item: T) {
+  public add(item: T, timestamp: Date = new Date()) {
     this.addSet.add({
       value: item,
-      lastModified: new Date(),
+      lastModified: timestamp,
     });
   }
 
-  public remove(item: T) {
+  public remove(item: T, timestamp: Date = new Date()) {
     this.removeSet.add({
       value: item,
-      lastModified: new Date(),
+      lastModified: timestamp,
     });
   }
 
